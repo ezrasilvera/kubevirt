@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
-	k8sv1 "k8s.io/api/core/v1"
 
 	v1 "kubevirt.io/client-go/api/v1"
 
@@ -530,7 +529,7 @@ var _ = Describe("[Serial][rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][le
 
 			By("Running VMI")
 			vmi := tests.NewRandomVMIWithPVC(tests.DiskAlpineHostPath)
-			addDownwardAPIVolumeWithLabel(vmi, downwardAPIName, map[string]string{testLabelKey: testLabelVal})
+			tests.AddDownwardAPIVolumeWithLabel(vmi, downwardAPIName, map[string]string{testLabelKey: testLabelVal})
 
 			tests.RunVMIAndExpectLaunch(vmi, 90)
 
@@ -564,27 +563,3 @@ var _ = Describe("[Serial][rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][le
 		})
 	})
 })
-
-func addDownwardAPIVolumeWithLabel(vmi *v1.VirtualMachineInstance, volumeName string, labels map[string]string) {
-	vmi.ObjectMeta.Labels = labels
-	vmi.Spec.Volumes = append(vmi.Spec.Volumes, v1.Volume{
-		Name: volumeName,
-		VolumeSource: v1.VolumeSource{
-			DownwardAPI: &v1.DownwardAPIVolumeSource{
-				Fields: []k8sv1.DownwardAPIVolumeFile{
-					{
-						Path: "labels",
-						FieldRef: &k8sv1.ObjectFieldSelector{
-							FieldPath: "metadata.labels",
-						},
-					},
-				},
-				VolumeLabel: "",
-			},
-		},
-	})
-
-	vmi.Spec.Domain.Devices.Disks = append(vmi.Spec.Domain.Devices.Disks, v1.Disk{
-		Name: volumeName,
-	})
-}
