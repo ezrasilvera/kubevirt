@@ -24,12 +24,10 @@ import (
 )
 
 var (
-	nonEvictableGauge = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "non_evictable_vm",
-			Help: "Indication for a VM that can't be evicted through live-migration.",
-		},[]string{"vminame"}
-	)
+	nonEvictableGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "non_evictable_vm",
+		Help: "Indication for a VM that can't be evicted through live-migration.",
+	}, []string{"vminame"})
 )
 
 func init() {
@@ -37,7 +35,7 @@ func init() {
 }
 
 func SetNonEvictableVM(nonEvictable bool, vmiName string) {
-	setVal := 0
+	var setVal float64 = 0
 	if nonEvictable {
 		setVal = 1
 	}
