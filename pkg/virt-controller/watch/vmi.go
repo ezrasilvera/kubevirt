@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	k8sv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -111,6 +112,17 @@ const (
 )
 
 const failedToRenderLaunchManifestErrFormat = "failed to render launch manifest: %v"
+
+var (
+	nonEvictableVMIGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kubevirt_vmi_non_evictable",
+		Help: "Indication for a VirtualMachine that can't be migrated but its eviction strategy is set to Live Migration.",
+	}, []string{"vmname"})
+)
+
+func init() {
+	prometheus.MustRegister(nonEvictableVMIGauge)
+}
 
 func NewVMIController(templateService services.TemplateService,
 	vmiInformer cache.SharedIndexInformer,
@@ -272,6 +284,7 @@ func (c *VMIController) execute(key string) error {
 	if needsSync {
 		syncErr = c.sync(vmi, pod, dataVolumes)
 	}
+	checkNonEvictableVMAndSetMetric(vmi)
 	err = c.updateStatus(vmi, pod, dataVolumes, syncErr)
 	if err != nil {
 		return err
@@ -283,6 +296,20 @@ func (c *VMIController) execute(key string) error {
 
 	return nil
 
+}
+
+func checkNonEvictableVMAndSetMetric(vmi *virtv1.VirtualMachineInstance) {
+	setVal := 0.0
+	if vmi.IsEvictable() {
+		vmiIsMigratableCond := controller.NewVirtualMachineInstanceConditionManager().
+			GetCondition(vmi, virtv1.VirtualMachineInstanceIsMigratable)
+
+		if vmiIsMigratableCond != nil && vmiIsMigratableCond.Status == k8sv1.ConditionFalse {
+			setVal = 1.0
+		}
+
+	}
+	nonEvictableVMIGauge.With(prometheus.Labels{"vminame": vmi.ObjectMeta.Name}).Set(setVal)
 }
 
 // verifies all conditions match even if they are not in the same order
