@@ -309,7 +309,7 @@ func checkNonEvictableVMAndSetMetric(vmi *virtv1.VirtualMachineInstance) {
 		}
 
 	}
-	nonEvictableVMIGauge.With(prometheus.Labels{"vminame": vmi.ObjectMeta.Name}).Set(setVal)
+	nonEvictableVMIGauge.With(prometheus.Labels{"vmname": vmi.ObjectMeta.Name}).Set(setVal)
 }
 
 // verifies all conditions match even if they are not in the same order
